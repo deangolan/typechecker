@@ -15,7 +15,7 @@ main = do
       do
         let ast = parse contents
         _ <- print ast
-        case typechecker . pure <$> ast of
+        case traverse typechecker ast of
           Left parseErr -> print $ "Parsing error: " ++ show parseErr
           Right (Left typeErr) -> print $ "Invalid type: " ++ show typeErr
           Right (Right terms) -> print terms
