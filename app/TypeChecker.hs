@@ -19,6 +19,8 @@ data TypeError
       }
   | NotAFunction {cannotApply :: Term, to :: Term, withType :: Term}
   | UnboundVariable Nat
+  | InvalidDomainInPi {domain :: Term, withType :: Term}
+  | InvalidCodomainInPi {codomain :: Term, withType :: Term}
   deriving (Show)
 
 throw :: TypeError -> TypeChecking a
@@ -46,9 +48,12 @@ typecheck = \case
     cod <- bind dom (typecheck body)
     return (Pi dom cod)
   Pi dom cod -> do
-    _ <- typecheck dom
-    _ <- bind dom (typecheck cod)
-    return (Universe Z) -- this might not be right. e.g. * -> *
+    dt <- typecheck dom
+    ct <- bind dom (typecheck cod)
+    case (dt, ct) of
+      (Universe n, Universe m) -> return (Universe (max n m))
+      (Universe _, _) -> throw (InvalidDomainInPi cod dt)
+      _ -> throw (InvalidDomainInPi dom dt)
   App f t -> do
     fTy <- typecheck f
     case normalize fTy of
