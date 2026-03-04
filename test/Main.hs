@@ -1,6 +1,7 @@
 module Main where
 
 import Ast
+import GHC.IO.Exception (assertError)
 import Parser
 import Test.HUnit
 import Prelude hiding (id)
@@ -9,19 +10,19 @@ main :: IO ()
 main = runTestTTAndExit tests
 
 parseTerm :: String -> Term -> Test
-parseTerm s t = TestCase (assertEqual ("Parse: " ++ s) (Right [t]) (pure <$> parse s))
+parseTerm s t = TestCase (assertEqual ("Parse: " ++ s) (Right [t]) (parse s))
 
 parseProgram :: String -> [Term] -> Test
-parseProgram s ts = TestCase (assertEqual ("Parse: " ++ s) (Right ts) (pure <$> parse s))
+parseProgram s ts = TestCase (assertEqual ("Parse: " ++ s) (Right ts) (parse s))
 
 id :: Term
 id = Lambda (Universe Z) (Lambda (Var Z) (Var Z))
 
-existential :: Term
-existential = Pi (Universe Z) (Pi (Universe Z) (Pi (Var Z) (Var (S Z))))
+foo :: Term
+foo = Pi (Universe Z) (Pi (Pi (Universe Z) (Pi (Var Z) (Var (S Z)))) (Var (S Z)))
 
 bottom :: Term
-bottom = App existential (Pi (Universe Z) (Var Z))
+bottom = App foo (Pi (Universe Z) (Var Z))
 
 tests :: Test
 tests =
@@ -33,15 +34,16 @@ tests =
       -- Decl
       parseTerm "id := \\(A : *) (x : A). x" id,
       parseTerm "id (A : *) (x : A) := x" id,
-      parseTerm "existential := (T : *) -> ((A : *) -> (x : A) -> A) -> T" existential,
-      parseProgram "existential := (T : *) -> ((A : *) -> (x : A) -> A) -> T  \n  id := \\(A : *) (x : A). x" [existential, id],
+      parseTerm "foo := (T : *) -> ((A : *) -> (x : A) -> A) -> T" foo,
+      parseProgram "foo := (T : *) -> ((A : *) -> (x : A) -> A) -> T  \n  id := \\(A : *) (x : A). x" [foo, id],
       -- Pi
       parseTerm "(A : *) -> A" (Pi (Universe Z) (Var Z)),
       parseTerm "(A : *) -> (B : *) -> A" (Pi (Universe Z) (Pi (Universe Z) (Var (S Z)))),
       parseTerm "(A : *) -> (B : *) -> B" (Pi (Universe Z) (Pi (Universe Z) (Var Z))),
       parseTerm "(A : *) -> (x : A) -> A" (Pi (Universe Z) (Pi (Var Z) (Var (S Z)))),
       parseTerm "(A : *) -> (B : (_ : *) -> *) -> B A" (Pi (Universe Z) (Pi (Pi (Universe Z) (Universe Z)) (App (Var Z) (Var (S Z))))),
-      parseTerm "(T : *) -> ((A : *) -> (x : A) -> A) -> T" existential,
+      parseTerm "(T : *) -> (_ : (A : *) -> (x : A) -> A) -> T" foo,
+      parseTerm "(T : *) -> ((A : *) -> (x : A) -> A) -> T" foo,
       -- App
       parseTerm "(\\(A : *)(x : A).x) (\\(A : *).A)" (App id (Lambda (Universe Z) (Var Z)))
     ]
