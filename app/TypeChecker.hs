@@ -33,8 +33,8 @@ find n = do
     find' (t : _) Z = Right t
     find' (_ : ts) (S n) = find' ts n
 
-bind :: Term -> TypeChecking ()
-bind t = local (t :) (pure ())
+bind :: Term -> TypeChecking a -> TypeChecking a
+bind t = local (t :)
 
 -- should never return term that is a value
 typecheck :: Term -> TypeChecking Term
@@ -43,13 +43,11 @@ typecheck = \case
   Var n -> find n
   Lambda dom body -> do
     _ <- typecheck dom
-    _ <- bind dom
-    cod <- typecheck body
+    cod <- bind dom (typecheck body)
     return (Pi dom cod)
   Pi dom cod -> do
     _ <- typecheck dom
-    _ <- bind dom
-    _ <- typecheck cod
+    _ <- bind dom (typecheck cod)
     return (Universe Z) -- this might not be right. e.g. * -> *
   App f t -> do
     fTy <- typecheck f
