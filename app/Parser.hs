@@ -15,7 +15,7 @@ unboundVariable :: String -> Parser a
 unboundVariable = liftEither . Left . UnboundVariable
 
 lexeme :: Parser a -> Parser a
-lexeme p = p <* spaces
+lexeme p = p <* skipMany (char ' ')
 
 parens :: Parser a -> Parser a
 parens p = lexeme (char '(') *> p <* lexeme (char ')')
@@ -77,10 +77,11 @@ term =
       Pi t <$> local (b :) term
     lambda = do
       _ <- lexeme $ char '\\'
-      (scope', ts) <- args
+      (b, t) <- arg
+      (scope', ts) <- local (b :) args
       _ <- lexeme $ char '.'
       body <- local (const scope') term
-      return $ foldr Lambda body ts
+      return $ foldr Lambda body (t : ts)
     decl = do
       b <- binding
       (scope', ts) <- local (b :) args
@@ -103,8 +104,8 @@ data Error
   | UnboundVar UnboundVariable
   deriving (Show, Eq)
 
-parse :: String -> Either Error Term
-parse s = case runReaderT (runPT term () "" s) [] of
+parse :: String -> Either Error [Term]
+parse s = case runReaderT (runPT (many (term <* spaces)) () "" s) [] of
   Left e -> Left (UnboundVar e)
   Right (Left e) -> Left (ParseError e)
   Right (Right t) -> Right t
