@@ -1,7 +1,6 @@
 module Main where
 
 import Ast
-import GHC.IO.Exception (assertError)
 import Parser
 import Test.HUnit
 import Prelude hiding (id)
