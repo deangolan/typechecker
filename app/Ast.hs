@@ -13,6 +13,10 @@ data Term
 
 data Nat = Z | S Nat deriving (Eq, Ord, Show)
 
+lengthNat :: [a] -> Nat
+lengthNat [] = Z
+lengthNat (_ : xs) = S (lengthNat xs)
+
 -- TODO: Ideally we could get rid of unbound variables during parsing and return
 -- an ast that cannot that cannot have unbound variables via its type.
 -- This type works but it was too complicated to construct during parsing.

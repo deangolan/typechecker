@@ -12,7 +12,10 @@ main = do
     path : _ -> do
       contents <- readFile path
       _ <- print contents
-      case typechecker . pure <$> parse contents of
-        Left parseErr -> print "Parsing error: " >> print parseErr
-        Right (Left typeErr) -> print "Invalid type: " >> print typeErr
-        Right (Right terms) -> print terms
+      do
+        let ast = parse contents
+        _ <- print ast
+        case typechecker . pure <$> ast of
+          Left parseErr -> print $ "Parsing error: " ++ show parseErr
+          Right (Left typeErr) -> print $ "Invalid type: " ++ show typeErr
+          Right (Right terms) -> print terms
