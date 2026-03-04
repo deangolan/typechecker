@@ -1,5 +1,3 @@
-{-# LANGUAGE TupleSections #-}
-
 module Parser where
 
 import Ast
@@ -11,7 +9,7 @@ type Scope = [String]
 
 newtype UnboundVariable = UnboundVariable String deriving (Show, Eq)
 
-type Parser = ParsecT String () (Either UnboundVariable)
+type Parser = ParsecT String () (ReaderT Scope (Either UnboundVariable))
 
 unboundVariable :: String -> Parser a
 unboundVariable = liftEither . Left . UnboundVariable
@@ -28,10 +26,9 @@ universe = Universe . lengthNat <$> lexeme (char '*' *> many (char '*'))
 binding :: Parser String
 binding = lexeme $ many1 (lower <|> upper <|> char '_')
 
-type WithScope a = Scope -> Parser a
-
-find :: String -> WithScope Term
-find s scope = do
+find :: String -> Parser Term
+find s = do
+  scope <- ask
   case go Z scope of
     Just n -> return (Var n)
     Nothing -> unboundVariable s
@@ -39,74 +36,67 @@ find s scope = do
     go _ [] = Nothing
     go n (b : bs) = if b == s then Just n else go (S n) bs
 
-var :: WithScope Term
-var scope = do
+var :: Parser Term
+var = do
   b <- binding
-  find b scope
+  find b
 
-arg :: WithScope (String, Term)
-arg scope = lexeme $ parens do
+arg :: Parser (String, Term)
+arg = lexeme $ parens do
   b <- binding <* lexeme (char ':') <|> return "_"
-  t <- term scope
+  t <- term
   return (b, t)
 
--- args :: String -> Parser a -> Parser (a, [Term])
--- args sep p = do
---   (b, t) <- arg
---   bind b (args' [t])
---   where
---     args' ts =
---       (string sep >> fmap (,ts) p) <|> do
---         (b', t') <- arg
---         bind b' (args' (ts ++ [t']))
-
-chainArgs :: Scope -> Parser (Scope, [Term])
-chainArgs scope =
+args :: Parser (Scope, [Term])
+args =
   ( do
-      (b, t) <- arg scope
-      (scope', ts) <- chainArgs (b : scope)
+      (b, t) <- arg
+      (scope', ts) <- local (b :) args
       return (scope', t : ts)
   )
-    <|> return (scope, [])
+    <|> ( do
+            scope <- ask
+            return (scope, [])
+        )
 
-term :: WithScope Term
-term scope =
+term :: Parser Term
+term =
   choice
-    [ try (decl scope),
-      try (lambda scope),
-      try (pi scope),
+    [ try decl,
+      try lambda,
+      try pi,
+      try app,
       universe,
-      var scope,
-      app scope,
-      parens (term scope)
+      var,
+      parens term
     ]
   where
-    pi scope = do
-      (b, t) <- arg scope
+    pi = do
+      (b, t) <- arg
       _ <- lexeme $ string "->"
-      Pi t <$> term (b : scope)
-    lambda scope = do
+      Pi t <$> local (b :) term
+    lambda = do
       _ <- lexeme $ char '\\'
-      (scope', ts) <- chainArgs scope
+      (scope', ts) <- args
       _ <- lexeme $ char '.'
-      body <- term scope'
+      body <- local (const scope') term
       return $ foldr Lambda body ts
-    decl scope = do
+    decl = do
       b <- binding
-      (scope', ts) <- chainArgs (b : scope)
+      (scope', ts) <- local (b :) args
       _ <- lexeme $ string ":="
-      body <- term scope'
+      body <- local (const scope') term
       return $ foldr Lambda body ts
-    atom scope =
+    atom =
       choice
         [ universe,
-          var scope,
-          parens (term scope)
+          var,
+          parens term
         ]
-    app scope = do
-      f <- atom scope
-      args <- many1 (atom scope)
-      return $ foldl App f args
+    app = do
+      f <- atom
+      ts <- many1 atom
+      return $ foldl App f ts
 
 data Error
   = ParseError ParseError
@@ -114,7 +104,7 @@ data Error
   deriving (Show, Eq)
 
 parse :: String -> Either Error Term
-parse s = case runPT (term []) () "" s of
+parse s = case runReaderT (runPT term () "" s) [] of
   Left e -> Left (UnboundVar e)
   Right (Left e) -> Left (ParseError e)
   Right (Right t) -> Right t

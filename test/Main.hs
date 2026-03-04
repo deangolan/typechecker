@@ -40,7 +40,7 @@ tests =
       parseTerm "(A : *) -> (B : *) -> A" (Pi (Universe Z) (Pi (Universe Z) (Var (S Z)))),
       parseTerm "(A : *) -> (B : *) -> B" (Pi (Universe Z) (Pi (Universe Z) (Var Z))),
       parseTerm "(A : *) -> (x : A) -> A" (Pi (Universe Z) (Pi (Var Z) (Var (S Z)))),
-      parseTerm "(A : *) -> (B : (_ : *) -> *) -> B A" (Pi (Universe Z) (Pi (Pi (Universe Z) (Universe Z)) (App (Var Z) (Var (S (S Z)))))),
+      parseTerm "(A : *) -> (B : (_ : *) -> *) -> B A" (Pi (Universe Z) (Pi (Pi (Universe Z) (Universe Z)) (App (Var Z) (Var (S Z))))),
       parseTerm "(T : *) -> ((A : *) -> (x : A) -> A) -> T" existential,
       -- App
       parseTerm "(\\(A : *)(x : A).x) (\\(A : *).A)" (App id (Lambda (Universe Z) (Var Z)))
