@@ -7,14 +7,14 @@ Small dependently typed core language based on Martin-Löf Type Theory.
 - De Bruijn indices
 - β-reduction and normalization
 - Parser with lexical scoping
-- Typechecker for the core calculus
+- Typechecking
 
 #### Notes
 
 This is an experimental implementation of a minimal dependently typed core language.
 Future work includes extending toward homotopy type theory.
 
-The long-term goal is to experiment with HoTT-style features such as higher inductive
+The long-term goal is to experiment with features from HoTT such as higher inductive
 types. For example, I would like to support definitions like:
 
 ```
